@@ -2,77 +2,86 @@ import streamlit as st
 import pandas as pd
 import requests
 import plotly.express as px
+from datetime import datetime, timedelta
 
-# Page Config
 st.set_page_config(page_title="APRF Macro Reality Engine", layout="wide")
-
 st.title("🇳🇵 APRF Macro Reality Engine")
-st.subheader("Nepal Economic Intelligence Dashboard - Live Data")
+st.subheader("Live Macroeconomic Intelligence Dashboard")
 
-# --- FUNCTION TO FETCH WORLD BANK DATA ---
-def fetch_world_bank_data():
+# --- Official NRB Forex API ---
+def fetch_nrb_rates():
+    # This is the V1 API endpoint
     try:
-        # World Bank API for Nepal (NPL) GDP Growth (NY.GDP.MKTP.KD.ZG)
-        url = "https://api.worldbank.org/v2/country/NPL/indicator/NY.GDP.MKTP.KD.ZG?format=json&per_page=10"
+        # Get rates for last 30 days
+        end_date = datetime.now().strftime('%Y-%m-%d')
+        start_date = (datetime.now() - timedelta(days=30)).strftime('%Y-%m-%d')
+        url = f"https://www.nrb.org.np/api/forex/v1/rates?page=1&per_page=20&from={start_date}&to={end_date}"
         response = requests.get(url, timeout=10)
         data = response.json()
         
-        # Extract the data (skip the first metadata element)
+        # Extract the latest payload (often the last item)
+        if data and data.get('data') and data['data'].get('payload'):
+            payload = data['data']['payload']
+            # Get the most recent rates
+            latest_rates = payload[-1]['rates']
+            return latest_rates, payload[-1]['date']
+    except Exception as e:
+        return None, None
+    return None, None
+
+# --- World Bank GDP Data ---
+def fetch_world_bank_gdp():
+    try:
+        url = "https://api.worldbank.org/v2/country/NPL/indicator/NY.GDP.MKTP.KD.ZG?format=json&per_page=10"
+        response = requests.get(url, timeout=10)
+        data = response.json()
         rows = data[1]
         years = [int(row['date']) for row in rows]
         values = [row['value'] for row in rows]
-        
-        # Create a DataFrame
         df = pd.DataFrame({'Year': years, 'GDP Growth (%)': values})
         return df.dropna()
     except:
         return None
 
-# --- FETCH DATA ---
-gdp_data = fetch_world_bank_data()
+# --- Display: Live Forex Table ---
+st.subheader("💱 Live Exchange Rates (Nepal Rastra Bank)")
+rates, date = fetch_nrb_rates()
 
-# --- DISPLAY ---
-if gdp_data is not None:
-    st.success("✅ Live data fetched from World Bank API!")
-    st.subheader("Nepal GDP Growth Rate (Historical)")
-    fig = px.line(gdp_data, x="Year", y="GDP Growth (%)", title="Real GDP Growth (World Bank)")
-    st.plotly_chart(fig, use_container_width=True)
+if rates:
+    st.success(f"✅ Live NRB data fetched from {date}")
+    # Convert to DataFrame
+    df_rates = pd.DataFrame(rates)
+    # Keep only necessary columns
+    cols_to_show = ['currency', 'unit', 'name', 'buy', 'sell']
+    df_rates = df_rates[cols_to_show]
     
-    # Show latest value
-    latest = gdp_data.iloc[-1]
-    st.metric("Latest GDP Growth", f"{latest['GDP Growth (%)']}%", f"Year: {latest['Year']}")
+    # Rename columns for better display
+    df_rates.rename(columns={'currency': 'Currency', 'unit': 'Unit', 'name': 'Name', 'buy': 'Buy (NPR)', 'sell': 'Sell (NPR)'}, inplace=True)
+    st.dataframe(df_rates)
 else:
-    st.warning("⚠️ Live API connection failed. Showing sample data.")
-    # Fallback to sample data
-    sample_gdp = pd.DataFrame({
-        'Year': [2019, 2020, 2021, 2022, 2023],
-        'GDP Growth (%)': [6.7, -2.0, 4.8, 5.6, 3.9]
+    st.warning("⚠️ NRB API unavailable. Showing sample data.")
+    sample_rates = pd.DataFrame({
+        'Currency': ['USD', 'EUR', 'INR'], 'Buy (NPR)': [133.5, 145.2, 1.6]
     })
+    st.dataframe(sample_rates)
+
+# --- Display: World Bank GDP Chart ---
+st.subheader("📈 GDP Growth Rate (World Bank Data)")
+gdp_data = fetch_world_bank_gdp()
+
+if gdp_data is not None:
+    st.success("✅ Live World Bank data fetched!")
+    fig = px.line(gdp_data, x="Year", y="GDP Growth (%)", title="Real GDP Growth for Nepal")
+    st.plotly_chart(fig, use_container_width=True)
+else:
+    st.warning("⚠️ World Bank API unavailable. Showing sample data.")
+    sample_gdp = pd.DataFrame({'Year': [2020, 2021, 2022], 'GDP Growth (%)': [-1.5, 4.5, 5.0]})
     st.line_chart(sample_gdp.set_index('Year'))
 
-# --- MACRO INDICATORS (SAMPLE BUT READY FOR LIVE API) ---
-st.subheader("Key Macroeconomic Indicators (Target vs Reality)")
-data = {
-    "Indicator": ["Inflation (CPI %)", "Remittance (Bn NPR)", "FX Reserves (Bn USD)", 
-                  "Trade Deficit (Bn NPR)", "Base Rate (%)"],
-    "Current": [6.4, 1450, 15.0, 1500, 10.5],
-    "Target": [5.0, 1600, 20.0, 1200, 8.0]
+# --- Policy Targets (Manual Input) ---
+st.subheader("📊 Key Macro Targets (MoF/RSP Vision)")
+targets = {
+    "Indicator": ["GDP Growth (%)", "Inflation (CPI %)", "Remittance (Bn NPR)"], 
+    "Target": [6.5, 5.0, 1600]
 }
-df = pd.DataFrame(data)
-st.dataframe(df)
-
-st.subheader("Current vs Target Performance")
-st.bar_chart(df.set_index("Indicator"))
-
-# --- POLICY GAP ANALYSIS ---
-st.subheader("📊 Policy Gap Analysis (RSP / MoF Alignment)")
-gap_data = {
-    "Policy Area": ["Job Creation", "Fiscal Reform", "Capital Mobilization", "Industrialization"],
-    "Current Status": ["High Migration", "Low Revenue", "Idle Liquidity", "Low Output"],
-    "Target Status": ["1M Jobs", "Efficient Spending", "Investment Flow", "High Productivity"],
-    "Gap Level": ["Critical", "High", "High", "Critical"]
-}
-gap_df = pd.DataFrame(gap_data)
-st.dataframe(gap_df)
-
-st.caption("APRF Policy Intelligence Lab | Live Data Node 0.5")
+st.dataframe(pd.DataFrame(targets))
