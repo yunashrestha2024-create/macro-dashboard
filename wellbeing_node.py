@@ -1,6 +1,6 @@
 import streamlit as st
-import pandas as pd
-import plotly.express as px
+import pandas as pd  # <--- ADD THIS
+import plotly.express as px  # <--- ADD THIS
 
 def show():
     st.subheader("🕊️ Spirituality & Well-being Node")
