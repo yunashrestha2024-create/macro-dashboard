@@ -7,33 +7,52 @@ from datetime import datetime, timedelta
 st.set_page_config(page_title="APRF Macro Reality Engine", layout="wide")
 st.title("🇳🇵 APRF Macro Reality Engine")
 st.subheader("Live Macroeconomic Intelligence Dashboard")
-# Add this right after st.subheader("Live Macroeconomic Intelligence Dashboard")
 
+# --- Refresh Button ---
 if st.button("🔄 Refresh Live Data"):
     st.rerun()
-    
-# --- Official NRB Forex API ---
+
+# --- Function to fetch NRB Forex Rates (Robust) ---
 def fetch_nrb_rates():
-    # This is the V1 API endpoint
     try:
-        # Get rates for last 30 days
         end_date = datetime.now().strftime('%Y-%m-%d')
         start_date = (datetime.now() - timedelta(days=30)).strftime('%Y-%m-%d')
         url = f"https://www.nrb.org.np/api/forex/v1/rates?page=1&per_page=20&from={start_date}&to={end_date}"
         response = requests.get(url, timeout=10)
         data = response.json()
         
-        # Extract the latest payload (often the last item)
         if data and data.get('data') and data['data'].get('payload'):
             payload = data['data']['payload']
-            # Get the most recent rates
             latest_rates = payload[-1]['rates']
             return latest_rates, payload[-1]['date']
     except Exception as e:
         return None, None
     return None, None
 
-# --- World Bank GDP Data ---
+# --- Display: Live Forex Table ---
+st.subheader("💱 Live Exchange Rates (Nepal Rastra Bank)")
+rates, date = fetch_nrb_rates()
+
+if rates:
+    st.success(f"✅ Live NRB data fetched from {date}")
+    df_rates = pd.DataFrame(rates)
+    
+    # Display all available columns (instead of hardcoding)
+    st.dataframe(df_rates)
+else:
+    st.warning("⚠️ NRB API unavailable. Showing sample data.")
+    sample_rates = pd.DataFrame({
+        'Currency': ['USD', 'EUR', 'INR'], 
+        'Buy (NPR)': [133.5, 145.2, 1.6],
+        'Sell (NPR)': [133.7, 145.4, 1.62]
+    })
+    st.dataframe(sample_rates)
+
+# --- Display: World Bank GDP Chart ---
+st.subheader("📈 GDP Growth Rate (World Bank Data)")
+gdp_data = None
+
+# This is safer - we define a function but call it manually
 def fetch_world_bank_gdp():
     try:
         url = "https://api.worldbank.org/v2/country/NPL/indicator/NY.GDP.MKTP.KD.ZG?format=json&per_page=10"
@@ -47,30 +66,6 @@ def fetch_world_bank_gdp():
     except:
         return None
 
-# --- Display: Live Forex Table ---
-st.subheader("💱 Live Exchange Rates (Nepal Rastra Bank)")
-rates, date = fetch_nrb_rates()
-
-if rates:
-    st.success(f"✅ Live NRB data fetched from {date}")
-    # Convert to DataFrame
-    df_rates = pd.DataFrame(rates)
-    # Keep only necessary columns
-    cols_to_show = ['currency', 'unit', 'name', 'buy', 'sell']
-    df_rates = df_rates[cols_to_show]
-    
-    # Rename columns for better display
-    df_rates.rename(columns={'currency': 'Currency', 'unit': 'Unit', 'name': 'Name', 'buy': 'Buy (NPR)', 'sell': 'Sell (NPR)'}, inplace=True)
-    st.dataframe(df_rates)
-else:
-    st.warning("⚠️ NRB API unavailable. Showing sample data.")
-    sample_rates = pd.DataFrame({
-        'Currency': ['USD', 'EUR', 'INR'], 'Buy (NPR)': [133.5, 145.2, 1.6]
-    })
-    st.dataframe(sample_rates)
-
-# --- Display: World Bank GDP Chart ---
-st.subheader("📈 GDP Growth Rate (World Bank Data)")
 gdp_data = fetch_world_bank_gdp()
 
 if gdp_data is not None:
