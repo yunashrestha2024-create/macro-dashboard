@@ -7,7 +7,11 @@ from datetime import datetime, timedelta
 st.set_page_config(page_title="APRF Macro Reality Engine", layout="wide")
 st.title("🇳🇵 APRF Macro Reality Engine")
 st.subheader("Live Macroeconomic Intelligence Dashboard")
+# Add this right after st.subheader("Live Macroeconomic Intelligence Dashboard")
 
+if st.button("🔄 Refresh Live Data"):
+    st.rerun()
+    
 # --- Official NRB Forex API ---
 def fetch_nrb_rates():
     # This is the V1 API endpoint
