@@ -1,28 +1,22 @@
-# knowledge_graph.py
+import streamlit as st
 import networkx as nx
 from pyvis.network import Network
 import streamlit.components.v1 as components
 
-def display_knowledge_graph():
+def show():
+    st.subheader("🔗 Rhizomatic Knowledge Graph")
     G = nx.Graph()
+    G.add_node("RSP Promises", color="red")
+    G.add_node("Macro Reality", color="green")
+    G.add_node("Well-being", color="purple")
+    G.add_node("AI Capability", color="cyan")
+    G.add_node("Education", color="orange")
     
-    # Nodes
-    G.add_node("RSP Promises", type="Policy", color="red")
-    G.add_node("MoF Budget", type="Policy", color="red")
-    G.add_node("GDP Growth", type="Macro", color="green")
-    G.add_node("Unemployment", type="Macro", color="green")
-    G.add_node("Education", type="Education", color="orange")
-    G.add_node("Spiritual Anchor", type="Spiritual", color="purple")
+    G.add_edge("RSP Promises", "Macro Reality")
+    G.add_edge("Macro Reality", "Well-being")
+    G.add_edge("AI Capability", "Education")
+    G.add_edge("Education", "Well-being")
     
-    # Edges
-    G.add_edge("RSP Promises", "MoF Budget")
-    G.add_edge("MoF Budget", "GDP Growth")
-    G.add_edge("GDP Growth", "Unemployment")
-    G.add_edge("Education", "Unemployment")
-    G.add_edge("Spiritual Anchor", "Education")
-    
-    # Visualize
-    net = Network(height="500px", width="100%", bgcolor="#ffffff", font_color="#000000")
+    net = Network(height="600px", width="100%", bgcolor="#0e1117", font_color="#ffffff")
     net.from_nx(G)
-    net_html = net.generate_html()
-    components.html(net_html, height=500, width="100%")
+    components.html(net.generate_html(), height=600, width="100%")
